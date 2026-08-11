@@ -85,7 +85,6 @@ typedef struct {
 	u32 numSession;
 	VCTMode mode;
 	u8 aid;
-	u8 padding__[3];
 	void *audioBuffer;
 	u32 audioBufferSize;
 	VCTEventCallback callback;
@@ -124,11 +123,10 @@ struct _VCTSession {
 	VCTMode mode;
 	u8 aid;
 	u8 talking;
-	u16 padding__;
 	u32 aidBitmap;
 	VCTState state;
 	void *userData;
-	VCTSession *_next;
+	VCTSession *next;
 };
 
 typedef struct _VCTVADInfo {
