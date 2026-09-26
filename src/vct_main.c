@@ -2,13 +2,14 @@
 
 #include <dwc.h>
 #include <nitro.h>
-#include <nitro/version_begin.h>
 
 #include "audio.h"
 #include "ssp.h"
 #include "stream.h"
 #include "udp_buffer.h"
 #include "vct.h"
+
+#include <nitro/version_begin.h>
 static char id_string[] = SDK_MIDDLEWARE_STRING("Abiosso", "libVCT 1.3.1");
 #include <nitro/version_end.h>
 

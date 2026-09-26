@@ -1,5 +1,6 @@
 #include "fir.h"
 
+#include <limits.h>
 #include <nitro.h>
 
 #include "audio.h"
@@ -12,7 +13,18 @@ static int sH[6];
 static s16 sSpkBuffer[VCT_AUDIO_DATA_SIZE / sizeof(s16)];
 static s16 sDelayLine[2048];
 
-s16 sImpulseResponse[8] = { 0xE9FB, 0x403D, 0xC7BC, 0x2CD1, 0xD02A, 0x037C, 0x08F0, 0xF593 };
+#define MAX_DELAY_LINE (sizeof(sDelayLine) / sizeof(s16))
+
+#define Q15_SHIFT 15
+
+#define Q15_CONST(x) (((x) > 0)           \
+        ? ((x) * (1 << Q15_SHIFT) + 0.5f) \
+        : ((x) * (1 << Q15_SHIFT) - 0.5f))
+
+s16 sImpulseResponse[8] = {
+    Q15_CONST(-0.17203), Q15_CONST(0.50186), Q15_CONST(-0.43957), Q15_CONST(0.35013), Q15_CONST(-0.37372), Q15_CONST(0.02722),
+    Q15_CONST(0.06982), Q15_CONST(-0.08145)
+};
 
 // these correspond to a cutoff of 239.45Hz
 #define GAIN 0.9138
@@ -52,9 +64,9 @@ void InitFIRFilter(void)
     int delay = 1635;
 
     sCounterIn = 0;
-    sCounterOut = 2048 - delay;
+    sCounterOut = MAX_DELAY_LINE - delay;
 
-    for (int i = 0; i < 2048; i++) {
+    for (int i = 0; i < (int)MAX_DELAY_LINE; i++) {
         sDelayLine[i] = 0;
     }
     for (int i = 0; i < 6; i++) {
@@ -86,16 +98,16 @@ static inline s16 process_sample_unroll(s16 spkSample)
     acc += sTap[0] * sH[0];
     sTap[1] = sTap[0];
 
-    if (acc > 0x3FFF8000) {
-        acc = 0x3FFF8000;
-    } else if (acc < -0x40000000) {
-        acc = -0x40000000;
+    if (acc > SHRT_MAX << Q15_SHIFT) {
+        acc = SHRT_MAX << Q15_SHIFT;
+    } else if (acc < SHRT_MIN << Q15_SHIFT) {
+        acc = SHRT_MIN << Q15_SHIFT;
     }
 
-    sCounterIn = (sCounterIn + 1) & 0x7FF;
-    sCounterOut = (sCounterOut + 1) & 0x7FF;
+    sCounterIn = (sCounterIn + 1) % MAX_DELAY_LINE;
+    sCounterOut = (sCounterOut + 1) % MAX_DELAY_LINE;
 
-    return acc >> 15;
+    return acc >> Q15_SHIFT;
 }
 
 void DoFIRFilter(void *micSample, void *spkSample, u32 length, u32 micGain)
